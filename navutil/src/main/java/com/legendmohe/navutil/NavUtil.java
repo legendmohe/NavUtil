@@ -65,7 +65,6 @@ public class NavUtil {
                 Log.d(TAG, "activity created: " + activity);
             }
             mActivityItems.add(new ActivityItem(activity, ACTIVITY_STATE_CREATED));
-            printDump();
         }
 
         @Override
@@ -161,7 +160,6 @@ public class NavUtil {
             if (mark != -1) {
                 mActivityItems.remove(mark);
             }
-            printDump();
         }
     };
 

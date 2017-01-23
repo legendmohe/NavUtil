@@ -70,6 +70,6 @@
 
 # Gradle
 
-compile 'com.legendmohe.maven:navutil:x.y'
+    compile 'com.legendmohe.maven:navutil:x.y'
 
 [ ![Download](https://api.bintray.com/packages/legendmohe/maven/NavUtil/images/download.svg) ](https://bintray.com/legendmohe/maven/NavUtil/_latestVersion)

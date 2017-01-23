@@ -74,6 +74,7 @@ dependencies {
     })
 //    compile 'com.android.support:appcompat-v7:25.1.0'
     testCompile 'junit:junit:4.12'
+    compile 'io.reactivex:rxjava:1.2.5'
 }
 
 apply from: 'https://raw.githubusercontent.com/attwellBrian/JCenter/master/installv1.gradle'

@@ -13,6 +13,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import rx.Observable;
+import rx.functions.Func1;
+import rx.subjects.BehaviorSubject;
+
 /**
  * Created by legendmohe on 2016/12/26.
  */
@@ -104,6 +108,7 @@ public class NavUtil {
                     mActivityItems) {
                 if (checkActivityReferenceExisted(item) && item.activity.get().equals(activity)) {
                     item.state = ACTIVITY_STATE_PAUSED;
+                    triggerSubject(item, LifecycleEvent.ON_PAUSE);
                     break;
                 }
             }
@@ -118,6 +123,7 @@ public class NavUtil {
                     mActivityItems) {
                 if (checkActivityReferenceExisted(item) && item.activity.get().equals(activity)) {
                     item.state = ACTIVITY_STATE_STOPPED;
+                    triggerSubject(item, LifecycleEvent.ON_STOP);
                     break;
                 }
             }
@@ -132,6 +138,7 @@ public class NavUtil {
                     mActivityItems) {
                 if (checkActivityReferenceExisted(item) && item.activity.get().equals(activity)) {
                     item.state = ACTIVITY_STATE_SAVE_INSTANCE_STATE;
+                    triggerSubject(item, LifecycleEvent.ON_SAVE_INSTANCE_STATE);
                     break;
                 }
             }
@@ -142,13 +149,16 @@ public class NavUtil {
             if (DEBUG) {
                 Log.d(TAG, "activity destroyed: " + activity);
             }
-//            for (ActivityItem item :
-//                    mActivityItems) {
-//                if (item.activity.get().equals(activity)) {
-//                    item.state = ACTIVITY_STATE_DESTORY;
-//                    break;
-//                }
-//            }
+            // activity 会被删掉，还需要这段代码吗？
+            for (ActivityItem item :
+                    mActivityItems) {
+                if (item.activity.get().equals(activity)) {
+                    item.state = ACTIVITY_STATE_DESTORY;
+                    triggerSubject(item, LifecycleEvent.ON_DESTROY);
+                    break;
+                }
+            }
+            //
             int mark = -1;
             for (int i = mActivityItems.size() - 1; i >= 0; i--) {
                 if (checkActivityReferenceExisted(i)
@@ -163,6 +173,12 @@ public class NavUtil {
         }
     };
 
+    private void triggerSubject(ActivityItem item, LifecycleEvent event) {
+        if (item.mSubject != null) {
+            item.mSubject.onNext(event);
+        }
+    }
+
     //////////////////////////////////////////////////////////////////////
 
     public static Application getApplication() {
@@ -172,6 +188,16 @@ public class NavUtil {
     public static Activity getCurrentActivity() {
         List<ActivityItem> temp = new ArrayList<>(getInstance().mActivityItems);
         return temp.get(temp.size() - 1).activity.get();
+    }
+
+    public ActivityItem getActivityItem(Activity activity) {
+        for (ActivityItem item :
+                getInstance().mActivityItems) {
+            if (checkActivityReferenceExisted(item) && item.activity.get().equals(activity)) {
+                return item;
+            }
+        }
+        return null;
     }
 
     //////////////////////////////////////////////////////////////////////
@@ -249,6 +275,40 @@ public class NavUtil {
         }
     }
 
+    ///////////////////////////////////RxLifeCycle///////////////////////////////////
+
+    public static <R> Observable.Transformer<R, R> emitUtilEvent(Activity target, LifecycleEvent event) {
+        final ActivityItem item = getInstance().getActivityItem(target);
+        if (item == null) {
+            throw new IllegalStateException("please compose this transformer after onCreate invoked");
+        }
+
+        if (item.mSubject == null) {
+            item.mSubject = BehaviorSubject.create();
+        }
+        return emitUtilEvent(item.mSubject, event);
+    }
+
+    static <R, T> Observable.Transformer<R, R> emitUtilEvent(final Observable<T> source, final T event) {
+        return new Observable.Transformer<R, R>() {
+            @Override
+            public Observable<R> call(Observable<R> rObservable) {
+                return rObservable.takeUntil(takeUntilEvent(source, event));
+            }
+        };
+    }
+
+    static <T> Observable<T> takeUntilEvent(final Observable<T> src, final T event) {
+        return src.takeFirst(new Func1<T, Boolean>() {
+            @Override
+            public Boolean call(T lifecycleEvent) {
+                return lifecycleEvent.equals(event);
+            }
+        });
+    }
+
+    //////////////////////////////////////////////////////////////////////
+
     private boolean checkActivityReferenceExisted(int index) {
         return mActivityItems.get(index).activity.get() != null;
     }
@@ -277,6 +337,7 @@ public class NavUtil {
     private static class ActivityItem {
         WeakReference<Activity> activity;
         int state;
+        BehaviorSubject<LifecycleEvent> mSubject;
 
         public ActivityItem(Activity activity, int state) {
             this.activity = new WeakReference<>(activity);

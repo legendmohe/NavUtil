@@ -19,8 +19,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
-import com.legendmohe.navutil.LifecycleEvent;
 import com.legendmohe.navutil.NavUtil;
+import com.legendmohe.navutil.model.LifecycleEvent;
 
 import java.util.concurrent.TimeUnit;
 
@@ -49,9 +49,6 @@ public class NavFragmentActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_nav_fragment);
-
-        // 绑定 FragmentManager
-        NavUtil.bindFragmentManager(this.getSupportFragmentManager());
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -144,7 +141,7 @@ public class NavFragmentActivity extends AppCompatActivity {
 
             final String hint = getString(R.string.section_format, getArguments().getInt(ARG_SECTION_NUMBER));
             Observable.interval(1, TimeUnit.SECONDS)
-                    .compose(NavUtil.<Long>subscribeUtilEvent(this, LifecycleEvent.ON_PAUSED))
+                    .compose(NavUtil.<Long>subscribeUtilEvent(this, LifecycleEvent.ON_STOPPED))
                     .subscribe(new Subscriber<Long>() {
                         @Override
                         public void onCompleted() {

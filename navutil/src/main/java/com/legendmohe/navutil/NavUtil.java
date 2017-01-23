@@ -6,21 +6,16 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentManager;
 import android.util.Log;
-import android.view.View;
 
+import com.legendmohe.navutil.model.LifecycleEvent;
 import com.legendmohe.navutil.model.StateItem;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import rx.Observable;
-import rx.functions.Func1;
-import rx.subjects.PublishSubject;
 
 /**
  * Created by legendmohe on 2016/12/26.
@@ -44,8 +39,6 @@ public class NavUtil {
 
     private List<StateItem<Activity>> mActivityItems;
 
-    private Map<Integer, StateItem<Fragment>> mFragmentMap;
-
     //////////////////////////////////////////////////////////////////////
 
     private static class LazyHolder {
@@ -58,7 +51,6 @@ public class NavUtil {
 
     private NavUtil() {
         mActivityItems = new ArrayList<>();
-        mFragmentMap = new HashMap<>();
     }
 
     /////////////////////////////////////Activity/////////////////////////////////
@@ -114,7 +106,6 @@ public class NavUtil {
                     mActivityItems) {
                 if (checkActivityReferenceExisted(item) && item.item.get().equals(activity)) {
                     item.state = ACTIVITY_STATE_PAUSED;
-                    triggerSubject(item, LifecycleEvent.ON_PAUSED);
                     break;
                 }
             }
@@ -129,7 +120,6 @@ public class NavUtil {
                     mActivityItems) {
                 if (checkActivityReferenceExisted(item) && item.item.get().equals(activity)) {
                     item.state = ACTIVITY_STATE_STOPPED;
-                    triggerSubject(item, LifecycleEvent.ON_STOPPED);
                     break;
                 }
             }
@@ -144,7 +134,6 @@ public class NavUtil {
                     mActivityItems) {
                 if (checkActivityReferenceExisted(item) && item.item.get().equals(activity)) {
                     item.state = ACTIVITY_STATE_SAVE_INSTANCE_STATE;
-                    triggerSubject(item, LifecycleEvent.ON_SAVE_INSTANCE_STATE);
                     break;
                 }
             }
@@ -160,7 +149,6 @@ public class NavUtil {
                     mActivityItems) {
                 if (item.item.get().equals(activity)) {
                     item.state = ACTIVITY_STATE_DESTORY;
-                    triggerSubject(item, LifecycleEvent.ON_DESTROYED);
                     break;
                 }
             }
@@ -178,12 +166,6 @@ public class NavUtil {
             }
         }
     };
-
-    private void triggerSubject(StateItem<Activity> item, LifecycleEvent event) {
-        if (item.mSubject != null) {
-            item.mSubject.onNext(event);
-        }
-    }
 
     //////////////////////////////////////////////////////////////////////
 
@@ -204,10 +186,6 @@ public class NavUtil {
             }
         }
         return null;
-    }
-
-    public StateItem<Fragment> getFragmentItem(Fragment fragment) {
-        return mFragmentMap.get(fragment.hashCode());
     }
 
     //////////////////////////////////////////////////////////////////////
@@ -277,133 +255,14 @@ public class NavUtil {
         }
     }
 
-    ///////////////////////////////////Fragment///////////////////////////////////
-
-    public static void bindFragmentManager(FragmentManager manager) {
-        if (manager == null) {
-            throw new NullPointerException("fragment manager is null!");
-        }
-
-        manager.registerFragmentLifecycleCallbacks(manager.new FragmentLifecycleCallbacks() {
-            @Override
-            public void onFragmentPreAttached(FragmentManager fm, Fragment f, Context context) {
-                getInstance().mFragmentMap.put(f.hashCode(), new StateItem<>(f, -1));
-            }
-
-            @Override
-            public void onFragmentAttached(FragmentManager fm, Fragment f, Context context) {
-            }
-
-            @Override
-            public void onFragmentCreated(FragmentManager fm, Fragment f, Bundle savedInstanceState) {
-            }
-
-            @Override
-            public void onFragmentActivityCreated(FragmentManager fm, Fragment f, Bundle savedInstanceState) {
-            }
-
-            @Override
-            public void onFragmentViewCreated(FragmentManager fm, Fragment f, View v, Bundle savedInstanceState) {
-            }
-
-            @Override
-            public void onFragmentStarted(FragmentManager fm, Fragment f) {
-            }
-
-            @Override
-            public void onFragmentResumed(FragmentManager fm, Fragment f) {
-            }
-
-            @Override
-            public void onFragmentPaused(FragmentManager fm, Fragment f) {
-                StateItem<Fragment> item = getInstance().mFragmentMap.get(f.hashCode());
-                if (item != null && item.mSubject != null) {
-                    item.mSubject.onNext(LifecycleEvent.ON_PAUSED);
-                }
-            }
-
-            @Override
-            public void onFragmentStopped(FragmentManager fm, Fragment f) {
-                StateItem<Fragment> item = getInstance().mFragmentMap.get(f.hashCode());
-                if (item != null && item.mSubject != null) {
-                    item.mSubject.onNext(LifecycleEvent.ON_STOPPED);
-                }
-            }
-
-            @Override
-            public void onFragmentSaveInstanceState(FragmentManager fm, Fragment f, Bundle outState) {
-                StateItem<Fragment> item = getInstance().mFragmentMap.get(f.hashCode());
-                if (item != null && item.mSubject != null) {
-                    item.mSubject.onNext(LifecycleEvent.ON_SAVE_INSTANCE_STATE);
-                }
-            }
-
-            @Override
-            public void onFragmentViewDestroyed(FragmentManager fm, Fragment f) {
-                StateItem<Fragment> item = getInstance().mFragmentMap.get(f.hashCode());
-                if (item != null && item.mSubject != null) {
-                    item.mSubject.onNext(LifecycleEvent.ON_VIEW_DESTORYED);
-                }
-            }
-
-            @Override
-            public void onFragmentDestroyed(FragmentManager fm, Fragment f) {
-                StateItem<Fragment> item = getInstance().mFragmentMap.get(f.hashCode());
-                if (item != null && item.mSubject != null) {
-                    item.mSubject.onNext(LifecycleEvent.ON_DESTROYED);
-                }
-            }
-
-            @Override
-            public void onFragmentDetached(FragmentManager fm, Fragment f) {
-                StateItem<Fragment> item = getInstance().mFragmentMap.get(f.hashCode());
-                if (item != null && item.mSubject != null) {
-                    item.mSubject.onNext(LifecycleEvent.ON_DESTROYED);
-                    getInstance().mFragmentMap.remove(f.hashCode());
-                }
-            }
-        }, true);
-    }
-
     ///////////////////////////////////RxLifeCycle///////////////////////////////////
 
-    public static <R> Observable.Transformer<R, R> subscribeUtilEvent(Activity target, LifecycleEvent event) {
-        final StateItem<Activity> item = getInstance().getActivityItem(target);
-        return createTransformerForStateItem(event, item);
+    public static <R> Observable.Transformer<R, R> subscribeUtilEvent(final Activity target, LifecycleEvent event) {
+        return TransformerFactory.subscribeUtilEventTransformer(target, event);
     }
 
-    public static <R> Observable.Transformer<R, R> subscribeUtilEvent(Fragment target, LifecycleEvent event) {
-        final StateItem<Fragment> item = getInstance().getFragmentItem(target);
-        return createTransformerForStateItem(event, item);
-    }
-
-    private static <R> Observable.Transformer<R, R> createTransformerForStateItem(LifecycleEvent event, StateItem<?> item) {
-        if (item == null) {
-            throw new IllegalStateException("please compose this transformer after super.onCreate invoked");
-        }
-
-        if (item.mSubject == null) {
-            item.mSubject = PublishSubject.create();
-        }
-        return subscribeUtilEvent(item.mSubject, event);
-    }
-
-    static <R, T> Observable.Transformer<R, R> subscribeUtilEvent(final Observable<T> source, final T event) {
-        return new Observable.Transformer<R, R>() {
-            @Override
-            public Observable<R> call(Observable<R> rObservable) {
-                return rObservable.takeUntil(takeUntilEvent(source, event));
-            }
-        };
-    }
-
-    static <T> Observable<T> takeUntilEvent(final Observable<T> src, final T event) {
-        return src.takeFirst(new Func1<T, Boolean>() {
-            @Override
-            public Boolean call(T lifecycleEvent) {
-                return lifecycleEvent.equals(event);
-            }
-        });
+    public static <R> Observable.Transformer<R, R> subscribeUtilEvent(final Fragment target, LifecycleEvent event) {
+        return TransformerFactory.subscribeUtilEventTransformer(target, event);
     }
 
     //////////////////////////////////////////////////////////////////////

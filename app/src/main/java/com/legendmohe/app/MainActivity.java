@@ -5,8 +5,8 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 
-import com.legendmohe.navutil.LifecycleEvent;
 import com.legendmohe.navutil.NavUtil;
+import com.legendmohe.navutil.model.LifecycleEvent;
 
 import java.util.concurrent.TimeUnit;
 

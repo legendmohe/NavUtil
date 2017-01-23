@@ -1,4 +1,4 @@
-package com.legendmohe.navutil;
+package com.legendmohe.navutil.model;
 
 /**
  * Created by legendmohe on 2017/1/23.

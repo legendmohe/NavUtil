@@ -35,9 +35,6 @@
         
  在 Fragment 中的用法如下所示：
  
-    // 1. 在 fragment 的 Activity 中绑定 FragmentManager
-    NavUtil.bindFragmentManager(this.getSupportFragmentManager());
-    // 2. 为你的 Observable 应用 compose 操作符
     Observable.interval(1, TimeUnit.SECONDS)
         .compose(NavUtil.<Long>subscribeUtilEvent(this, LifecycleEvent.ON_PAUSED))
         .subscribe(new Subscriber<Long>() {

@@ -5,7 +5,12 @@ import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentManager;
 import android.util.Log;
+import android.view.View;
+
+import com.legendmohe.navutil.model.StateItem;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -15,7 +20,7 @@ import java.util.Map;
 
 import rx.Observable;
 import rx.functions.Func1;
-import rx.subjects.BehaviorSubject;
+import rx.subjects.PublishSubject;
 
 /**
  * Created by legendmohe on 2016/12/26.
@@ -37,8 +42,9 @@ public class NavUtil {
 
     private WeakReference<Application> mApplication;
 
-    private List<ActivityItem> mActivityItems;
-    private Map<Integer, ActivityItem> mActivityMap;
+    private List<StateItem<Activity>> mActivityItems;
+
+    private Map<Integer, StateItem<Fragment>> mFragmentMap;
 
     //////////////////////////////////////////////////////////////////////
 
@@ -52,10 +58,10 @@ public class NavUtil {
 
     private NavUtil() {
         mActivityItems = new ArrayList<>();
-        mActivityMap = new HashMap<>();
+        mFragmentMap = new HashMap<>();
     }
 
-    //////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////Activity/////////////////////////////////
 
     public static void init(Application application) {
         LazyHolder.INSTANCE.mApplication = new WeakReference<>(application);
@@ -68,7 +74,7 @@ public class NavUtil {
             if (DEBUG) {
                 Log.d(TAG, "activity created: " + activity);
             }
-            mActivityItems.add(new ActivityItem(activity, ACTIVITY_STATE_CREATED));
+            mActivityItems.add(new StateItem<>(activity, ACTIVITY_STATE_CREATED));
         }
 
         @Override
@@ -76,9 +82,9 @@ public class NavUtil {
             if (DEBUG) {
                 Log.d(TAG, "activity started: " + activity);
             }
-            for (ActivityItem item :
+            for (StateItem<Activity> item :
                     mActivityItems) {
-                if (checkActivityReferenceExisted(item) && item.activity.get().equals(activity)) {
+                if (checkActivityReferenceExisted(item) && item.item.get().equals(activity)) {
                     item.state = ACTIVITY_STATE_STARTED;
                     break;
                 }
@@ -90,9 +96,9 @@ public class NavUtil {
             if (DEBUG) {
                 Log.d(TAG, "activity resumed: " + activity);
             }
-            for (ActivityItem item :
+            for (StateItem<Activity> item :
                     mActivityItems) {
-                if (checkActivityReferenceExisted(item) && item.activity.get().equals(activity)) {
+                if (checkActivityReferenceExisted(item) && item.item.get().equals(activity)) {
                     item.state = ACTIVITY_STATE_RESUMED;
                     break;
                 }
@@ -104,11 +110,11 @@ public class NavUtil {
             if (DEBUG) {
                 Log.d(TAG, "activity paused: " + activity);
             }
-            for (ActivityItem item :
+            for (StateItem<Activity> item :
                     mActivityItems) {
-                if (checkActivityReferenceExisted(item) && item.activity.get().equals(activity)) {
+                if (checkActivityReferenceExisted(item) && item.item.get().equals(activity)) {
                     item.state = ACTIVITY_STATE_PAUSED;
-                    triggerSubject(item, LifecycleEvent.ON_PAUSE);
+                    triggerSubject(item, LifecycleEvent.ON_PAUSED);
                     break;
                 }
             }
@@ -119,11 +125,11 @@ public class NavUtil {
             if (DEBUG) {
                 Log.d(TAG, "activity stopped: " + activity);
             }
-            for (ActivityItem item :
+            for (StateItem<Activity> item :
                     mActivityItems) {
-                if (checkActivityReferenceExisted(item) && item.activity.get().equals(activity)) {
+                if (checkActivityReferenceExisted(item) && item.item.get().equals(activity)) {
                     item.state = ACTIVITY_STATE_STOPPED;
-                    triggerSubject(item, LifecycleEvent.ON_STOP);
+                    triggerSubject(item, LifecycleEvent.ON_STOPPED);
                     break;
                 }
             }
@@ -134,9 +140,9 @@ public class NavUtil {
             if (DEBUG) {
                 Log.d(TAG, "activity saveInstanceState: " + activity);
             }
-            for (ActivityItem item :
+            for (StateItem<Activity> item :
                     mActivityItems) {
-                if (checkActivityReferenceExisted(item) && item.activity.get().equals(activity)) {
+                if (checkActivityReferenceExisted(item) && item.item.get().equals(activity)) {
                     item.state = ACTIVITY_STATE_SAVE_INSTANCE_STATE;
                     triggerSubject(item, LifecycleEvent.ON_SAVE_INSTANCE_STATE);
                     break;
@@ -150,11 +156,11 @@ public class NavUtil {
                 Log.d(TAG, "activity destroyed: " + activity);
             }
             // activity 会被删掉，还需要这段代码吗？
-            for (ActivityItem item :
+            for (StateItem<Activity> item :
                     mActivityItems) {
-                if (item.activity.get().equals(activity)) {
+                if (item.item.get().equals(activity)) {
                     item.state = ACTIVITY_STATE_DESTORY;
-                    triggerSubject(item, LifecycleEvent.ON_DESTROY);
+                    triggerSubject(item, LifecycleEvent.ON_DESTROYED);
                     break;
                 }
             }
@@ -162,7 +168,7 @@ public class NavUtil {
             int mark = -1;
             for (int i = mActivityItems.size() - 1; i >= 0; i--) {
                 if (checkActivityReferenceExisted(i)
-                        && mActivityItems.get(i).activity.get().equals(activity)) {
+                        && mActivityItems.get(i).item.get().equals(activity)) {
                     mark = i;
                     break;
                 }
@@ -173,7 +179,7 @@ public class NavUtil {
         }
     };
 
-    private void triggerSubject(ActivityItem item, LifecycleEvent event) {
+    private void triggerSubject(StateItem<Activity> item, LifecycleEvent event) {
         if (item.mSubject != null) {
             item.mSubject.onNext(event);
         }
@@ -186,18 +192,22 @@ public class NavUtil {
     }
 
     public static Activity getCurrentActivity() {
-        List<ActivityItem> temp = new ArrayList<>(getInstance().mActivityItems);
-        return temp.get(temp.size() - 1).activity.get();
+        List<StateItem<Activity>> temp = new ArrayList<>(getInstance().mActivityItems);
+        return temp.get(temp.size() - 1).item.get();
     }
 
-    public ActivityItem getActivityItem(Activity activity) {
-        for (ActivityItem item :
+    public StateItem<Activity> getActivityItem(Activity activity) {
+        for (StateItem<Activity> item :
                 getInstance().mActivityItems) {
-            if (checkActivityReferenceExisted(item) && item.activity.get().equals(activity)) {
+            if (checkActivityReferenceExisted(item) && item.item.get().equals(activity)) {
                 return item;
             }
         }
         return null;
+    }
+
+    public StateItem<Fragment> getFragmentItem(Fragment fragment) {
+        return mFragmentMap.get(fragment.hashCode());
     }
 
     //////////////////////////////////////////////////////////////////////
@@ -214,14 +224,6 @@ public class NavUtil {
             //
             parent.startActivity(intent);
         }
-    }
-
-    public static void startActivity(Class<? extends Activity> target) {
-        startActivity(target, null);
-    }
-
-    public static void startActivity(Class<? extends Activity> target, Bundle extras) {
-        startActivity(getInstance().mApplication.get(), target, extras);
     }
 
     public static void startActivity(Context parent, Class<? extends Activity> target) {
@@ -257,7 +259,7 @@ public class NavUtil {
         //
         for (int i = mActivityItems.size() - 2; i >= 0; i--) {
             if (checkActivityReferenceExisted(i)) {
-                if (mActivityItems.get(i).activity.get().getClass().equals(targetActivity)) {
+                if (mActivityItems.get(i).item.get().getClass().equals(targetActivity)) {
                     existed = true;
                     break;
                 }
@@ -266,25 +268,122 @@ public class NavUtil {
         if (existed) {
             // 2. pop to target
             for (int i = mActivityItems.size() - 1; i >= 0; i--) {
-                if (mActivityItems.get(i).activity.get().getClass().equals(targetActivity)) {
+                if (mActivityItems.get(i).item.get().getClass().equals(targetActivity)) {
                     break;
                 } else {
-                    mActivityItems.get(i).activity.get().finish();
+                    mActivityItems.get(i).item.get().finish();
                 }
             }
         }
     }
 
+    ///////////////////////////////////Fragment///////////////////////////////////
+
+    public static void bindFragmentManager(FragmentManager manager) {
+        if (manager == null) {
+            throw new NullPointerException("fragment manager is null!");
+        }
+
+        manager.registerFragmentLifecycleCallbacks(manager.new FragmentLifecycleCallbacks() {
+            @Override
+            public void onFragmentPreAttached(FragmentManager fm, Fragment f, Context context) {
+                getInstance().mFragmentMap.put(f.hashCode(), new StateItem<>(f, -1));
+            }
+
+            @Override
+            public void onFragmentAttached(FragmentManager fm, Fragment f, Context context) {
+            }
+
+            @Override
+            public void onFragmentCreated(FragmentManager fm, Fragment f, Bundle savedInstanceState) {
+            }
+
+            @Override
+            public void onFragmentActivityCreated(FragmentManager fm, Fragment f, Bundle savedInstanceState) {
+            }
+
+            @Override
+            public void onFragmentViewCreated(FragmentManager fm, Fragment f, View v, Bundle savedInstanceState) {
+            }
+
+            @Override
+            public void onFragmentStarted(FragmentManager fm, Fragment f) {
+            }
+
+            @Override
+            public void onFragmentResumed(FragmentManager fm, Fragment f) {
+            }
+
+            @Override
+            public void onFragmentPaused(FragmentManager fm, Fragment f) {
+                StateItem<Fragment> item = getInstance().mFragmentMap.get(f.hashCode());
+                if (item != null && item.mSubject != null) {
+                    item.mSubject.onNext(LifecycleEvent.ON_PAUSED);
+                }
+            }
+
+            @Override
+            public void onFragmentStopped(FragmentManager fm, Fragment f) {
+                StateItem<Fragment> item = getInstance().mFragmentMap.get(f.hashCode());
+                if (item != null && item.mSubject != null) {
+                    item.mSubject.onNext(LifecycleEvent.ON_STOPPED);
+                }
+            }
+
+            @Override
+            public void onFragmentSaveInstanceState(FragmentManager fm, Fragment f, Bundle outState) {
+                StateItem<Fragment> item = getInstance().mFragmentMap.get(f.hashCode());
+                if (item != null && item.mSubject != null) {
+                    item.mSubject.onNext(LifecycleEvent.ON_SAVE_INSTANCE_STATE);
+                }
+            }
+
+            @Override
+            public void onFragmentViewDestroyed(FragmentManager fm, Fragment f) {
+                StateItem<Fragment> item = getInstance().mFragmentMap.get(f.hashCode());
+                if (item != null && item.mSubject != null) {
+                    item.mSubject.onNext(LifecycleEvent.ON_VIEW_DESTORYED);
+                }
+            }
+
+            @Override
+            public void onFragmentDestroyed(FragmentManager fm, Fragment f) {
+                StateItem<Fragment> item = getInstance().mFragmentMap.get(f.hashCode());
+                if (item != null && item.mSubject != null) {
+                    item.mSubject.onNext(LifecycleEvent.ON_DESTROYED);
+                }
+            }
+
+            @Override
+            public void onFragmentDetached(FragmentManager fm, Fragment f) {
+                StateItem<Fragment> item = getInstance().mFragmentMap.get(f.hashCode());
+                if (item != null && item.mSubject != null) {
+                    item.mSubject.onNext(LifecycleEvent.ON_DESTROYED);
+                    getInstance().mFragmentMap.remove(f.hashCode());
+                }
+            }
+        }, true);
+    }
+
     ///////////////////////////////////RxLifeCycle///////////////////////////////////
 
     public static <R> Observable.Transformer<R, R> emitUtilEvent(Activity target, LifecycleEvent event) {
-        final ActivityItem item = getInstance().getActivityItem(target);
+        final StateItem<Activity> item = getInstance().getActivityItem(target);
+        return createTransformerForStateItem(event, item);
+    }
+
+    public static <R> Observable.Transformer<R, R> emitUtilEvent(Fragment target, LifecycleEvent event) {
+        final StateItem<Fragment> item = getInstance().getFragmentItem(target);
+        return createTransformerForStateItem(event, item);
+    }
+
+    private static <R> Observable.Transformer<R, R> createTransformerForStateItem(LifecycleEvent event, StateItem<?> item) {
         if (item == null) {
             throw new IllegalStateException("please compose this transformer after super.onCreate invoked");
         }
 
         if (item.mSubject == null) {
-            item.mSubject = BehaviorSubject.create();
+            item.mSubject = PublishSubject.create();
         }
         return emitUtilEvent(item.mSubject, event);
     }
@@ -310,19 +409,19 @@ public class NavUtil {
     //////////////////////////////////////////////////////////////////////
 
     private boolean checkActivityReferenceExisted(int index) {
-        return mActivityItems.get(index).activity.get() != null;
+        return mActivityItems.get(index).item.get() != null;
     }
 
-    private boolean checkActivityReferenceExisted(ActivityItem item) {
-        return item.activity.get() != null;
+    private boolean checkActivityReferenceExisted(StateItem<Activity> item) {
+        return item.item.get() != null;
     }
 
     public String dump() {
         StringBuffer sb = new StringBuffer();
-        for (ActivityItem item :
+        for (StateItem<Activity> item :
                 mActivityItems) {
             if (checkActivityReferenceExisted(item)) {
-                sb.append("| ").append(item.activity.get()).append(" -> ").append(item.state).append("\n");
+                sb.append("| ").append(item.item.get()).append(" -> ").append(item.state).append("\n");
             }
         }
         return sb.toString();
@@ -333,15 +432,4 @@ public class NavUtil {
     }
 
     //////////////////////////////////////////////////////////////////////
-
-    private static class ActivityItem {
-        WeakReference<Activity> activity;
-        int state;
-        BehaviorSubject<LifecycleEvent> mSubject;
-
-        public ActivityItem(Activity activity, int state) {
-            this.activity = new WeakReference<>(activity);
-            this.state = state;
-        }
-    }
 }

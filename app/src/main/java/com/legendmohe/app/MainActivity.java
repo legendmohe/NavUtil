@@ -3,6 +3,7 @@ package com.legendmohe.app;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.View;
 
 import com.legendmohe.navutil.LifecycleEvent;
 import com.legendmohe.navutil.NavUtil;
@@ -20,24 +21,12 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        Observable.interval(1, TimeUnit.SECONDS)
-                .compose(NavUtil.<Long>emitUtilEvent(this, LifecycleEvent.ON_DESTROY))
-                .subscribe(new Subscriber<Long>() {
-                    @Override
-                    public void onCompleted() {
-                        Log.d(TAG, "onCompleted() called");
-                    }
-
-                    @Override
-                    public void onError(Throwable e) {
-                        Log.d(TAG, "onError() called with: e = [" + e + "]");
-                    }
-
-                    @Override
-                    public void onNext(Long aLong) {
-                        Log.d(TAG, "onNext() called with: aLong = [" + aLong + "]");
-                    }
-                });
+        findViewById(R.id.fragment_button).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                NavUtil.startActivity(MainActivity.this, NavFragmentActivity.class);
+            }
+        });
     }
 
     @Override
@@ -45,7 +34,7 @@ public class MainActivity extends AppCompatActivity {
         super.onStart();
 
         Observable.interval(1, TimeUnit.SECONDS)
-                .compose(NavUtil.<Long>emitUtilEvent(this, LifecycleEvent.ON_DESTROY))
+                .compose(NavUtil.<Long>emitUtilEvent(this, LifecycleEvent.ON_STOPPED))
                 .subscribe(new Subscriber<Long>() {
                     @Override
                     public void onCompleted() {

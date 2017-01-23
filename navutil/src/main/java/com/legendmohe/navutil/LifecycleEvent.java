@@ -5,8 +5,10 @@ package com.legendmohe.navutil;
  */
 
 public enum LifecycleEvent {
-    ON_PAUSE,
-    ON_STOP,
+    ON_PAUSED,
+    ON_STOPPED,
     ON_SAVE_INSTANCE_STATE,
-    ON_DESTROY
+    ON_DESTROYED,
+    ON_VIEW_DESTORYED,
+    ON_DETACHED,
 }

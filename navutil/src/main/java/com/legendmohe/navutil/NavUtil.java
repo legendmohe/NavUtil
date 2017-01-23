@@ -280,7 +280,7 @@ public class NavUtil {
     public static <R> Observable.Transformer<R, R> emitUtilEvent(Activity target, LifecycleEvent event) {
         final ActivityItem item = getInstance().getActivityItem(target);
         if (item == null) {
-            throw new IllegalStateException("please compose this transformer after onCreate invoked");
+            throw new IllegalStateException("please compose this transformer after super.onCreate invoked");
         }
 
         if (item.mSubject == null) {

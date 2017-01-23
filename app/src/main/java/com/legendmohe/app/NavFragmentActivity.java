@@ -144,7 +144,7 @@ public class NavFragmentActivity extends AppCompatActivity {
 
             final String hint = getString(R.string.section_format, getArguments().getInt(ARG_SECTION_NUMBER));
             Observable.interval(1, TimeUnit.SECONDS)
-                    .compose(NavUtil.<Long>emitUtilEvent(this, LifecycleEvent.ON_PAUSED))
+                    .compose(NavUtil.<Long>subscribeUtilEvent(this, LifecycleEvent.ON_PAUSED))
                     .subscribe(new Subscriber<Long>() {
                         @Override
                         public void onCompleted() {

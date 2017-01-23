@@ -367,12 +367,12 @@ public class NavUtil {
 
     ///////////////////////////////////RxLifeCycle///////////////////////////////////
 
-    public static <R> Observable.Transformer<R, R> emitUtilEvent(Activity target, LifecycleEvent event) {
+    public static <R> Observable.Transformer<R, R> subscribeUtilEvent(Activity target, LifecycleEvent event) {
         final StateItem<Activity> item = getInstance().getActivityItem(target);
         return createTransformerForStateItem(event, item);
     }
 
-    public static <R> Observable.Transformer<R, R> emitUtilEvent(Fragment target, LifecycleEvent event) {
+    public static <R> Observable.Transformer<R, R> subscribeUtilEvent(Fragment target, LifecycleEvent event) {
         final StateItem<Fragment> item = getInstance().getFragmentItem(target);
         return createTransformerForStateItem(event, item);
     }
@@ -385,10 +385,10 @@ public class NavUtil {
         if (item.mSubject == null) {
             item.mSubject = PublishSubject.create();
         }
-        return emitUtilEvent(item.mSubject, event);
+        return subscribeUtilEvent(item.mSubject, event);
     }
 
-    static <R, T> Observable.Transformer<R, R> emitUtilEvent(final Observable<T> source, final T event) {
+    static <R, T> Observable.Transformer<R, R> subscribeUtilEvent(final Observable<T> source, final T event) {
         return new Observable.Transformer<R, R>() {
             @Override
             public Observable<R> call(Observable<R> rObservable) {

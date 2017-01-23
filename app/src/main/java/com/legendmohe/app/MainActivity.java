@@ -34,7 +34,7 @@ public class MainActivity extends AppCompatActivity {
         super.onStart();
 
         Observable.interval(1, TimeUnit.SECONDS)
-                .compose(NavUtil.<Long>emitUtilEvent(this, LifecycleEvent.ON_STOPPED))
+                .compose(NavUtil.<Long>subscribeUtilEvent(this, LifecycleEvent.ON_STOPPED))
                 .subscribe(new Subscriber<Long>() {
                     @Override
                     public void onCompleted() {

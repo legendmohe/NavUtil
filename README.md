@@ -12,28 +12,7 @@
         }
     }
     
-然后，在Activity 中，为你的 Observable 应用 compose 操作符，如下所示：
-
-    Observable.interval(1, TimeUnit.SECONDS)
-        .compose(NavUtil.<Long>subscribeUtilEvent(this, LifecycleEvent.ON_STOPPED))
-        .subscribe(new Subscriber<Long>() {
-            @Override
-            public void onCompleted() {
-                Log.d(TAG, "onStart onCompleted() called");
-            }
-
-            @Override
-            public void onError(Throwable e) {
-                Log.d(TAG, "onStart onError() called with: e = [" + e + "]");
-            }
-
-            @Override
-            public void onNext(Long aLong) {
-                Log.d(TAG, "onStart onNext() called with: aLong = [" + aLong + "]");
-            }
-        });
-        
- 在 Fragment 中的用法如下所示：
+然后，在Activity 或 Fragment 中，为你的 Observable 应用 compose 操作符，如下所示：
  
     Observable.interval(1, TimeUnit.SECONDS)
         .compose(NavUtil.<Long>subscribeUtilEvent(this, LifecycleEvent.ON_PAUSED))

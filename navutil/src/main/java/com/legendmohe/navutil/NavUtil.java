@@ -258,11 +258,11 @@ public class NavUtil {
     ///////////////////////////////////RxLifeCycle///////////////////////////////////
 
     public static <R> Observable.Transformer<R, R> subscribeUtilEvent(final Activity target, LifecycleEvent event) {
-        return TransformerFactory.subscribeUtilEventTransformer(target, event);
+        return RxLifecycle.subscribeUtilEvent(target, event);
     }
 
     public static <R> Observable.Transformer<R, R> subscribeUtilEvent(final Fragment target, LifecycleEvent event) {
-        return TransformerFactory.subscribeUtilEventTransformer(target, event);
+        return RxLifecycle.subscribeUtilEvent(target, event);
     }
 
     //////////////////////////////////////////////////////////////////////

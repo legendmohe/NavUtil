@@ -12,9 +12,11 @@ import java.util.concurrent.TimeUnit;
 
 import rx.Observable;
 import rx.Subscriber;
+import rx.Subscription;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
+    private Subscription mSubscription;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -27,6 +29,25 @@ public class MainActivity extends AppCompatActivity {
                 NavUtil.startActivity(MainActivity.this, NavFragmentActivity.class);
             }
         });
+
+//        mSubscription = TransformerFactory.createLifecycle(this)
+//                .take(1)
+//                .subscribe(new Subscriber<LifecycleEvent>() {
+//                    @Override
+//                    public void onCompleted() {
+//                        Log.d(TAG, "createLifecycle onCompleted() called");
+//                    }
+//
+//                    @Override
+//                    public void onError(Throwable e) {
+//                        Log.d(TAG, "createLifecycle onError() called with: e = [" + e + "]");
+//                    }
+//
+//                    @Override
+//                    public void onNext(LifecycleEvent lifecycleEvent) {
+//                        Log.d(TAG, "createLifecycle onNext() called with: lifecycleEvent = [" + lifecycleEvent + "]");
+//                    }
+//                });
     }
 
     @Override
@@ -38,17 +59,36 @@ public class MainActivity extends AppCompatActivity {
                 .subscribe(new Subscriber<Long>() {
                     @Override
                     public void onCompleted() {
-                        Log.d(TAG, "onStart onCompleted() called");
+                        Log.d(TAG, "1onStart onCompleted() called");
                     }
 
                     @Override
                     public void onError(Throwable e) {
-                        Log.d(TAG, "onStart onError() called with: e = [" + e + "]");
+                        Log.d(TAG, "1onStart onError() called with: e = [" + e + "]");
                     }
 
                     @Override
                     public void onNext(Long aLong) {
-                        Log.d(TAG, "onStart onNext() called with: aLong = [" + aLong + "]");
+                        Log.d(TAG, "1onStart onNext() called with: aLong = [" + aLong + "]");
+                    }
+                });
+
+        Observable.interval(3, TimeUnit.SECONDS)
+                .compose(NavUtil.<Long>subscribeUtilEvent(this, LifecycleEvent.ON_STOPPED))
+                .subscribe(new Subscriber<Long>() {
+                    @Override
+                    public void onCompleted() {
+                        Log.d(TAG, "2onStart onCompleted() called");
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        Log.d(TAG, "2onStart onError() called with: e = [" + e + "]");
+                    }
+
+                    @Override
+                    public void onNext(Long aLong) {
+                        Log.d(TAG, "2onStart onNext() called with: aLong = [" + aLong + "]");
                     }
                 });
     }

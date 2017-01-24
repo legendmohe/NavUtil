@@ -5,6 +5,9 @@ package com.legendmohe.navutil.model;
  */
 
 public enum LifecycleEvent {
+    ON_CREATED,
+    ON_STARTED,
+    ON_RESUMED,
     ON_PAUSED,
     ON_STOPPED,
     ON_SAVE_INSTANCE_STATE,

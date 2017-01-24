@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.view.View;
@@ -13,31 +14,51 @@ import com.legendmohe.navutil.model.LifecycleEvent;
 import rx.Observable;
 import rx.functions.Action0;
 import rx.functions.Func1;
-import rx.subjects.PublishSubject;
+import rx.subjects.BehaviorSubject;
+import rx.subjects.Subject;
 
 /**
  * Created by legendmohe on 2017/1/23.
  */
 
-public class TransformerFactory {
+public class RxLifecycle {
+    private static final String TAG = "TransformerFactory";
 
-    public static <R> Observable.Transformer<R, R> subscribeUtilEventTransformer(final Activity target, LifecycleEvent event) {
+    public static <R> Observable.Transformer<R, R> subscribeUtilEvent(final Activity target, LifecycleEvent event) {
+        Observable<LifecycleEvent> lifecycle = createLifecycle(target);
+        return subscribeUtilEvent(lifecycle, event);
+    }
+
+    public static <R> Observable.Transformer<R, R> subscribeUtilEvent(final Fragment target, LifecycleEvent event) {
+        Observable<LifecycleEvent> lifecycle = createLifecycle(target);
+        return subscribeUtilEvent(lifecycle, event);
+    }
+
+    @NonNull
+    private static Subject<LifecycleEvent, LifecycleEvent> getLifecycleEventSubject() {
+        return BehaviorSubject.create();
+    }
+
+    public static Observable<LifecycleEvent> createLifecycle(final Activity target) {
         final Application app = target.getApplication();
-        final PublishSubject<LifecycleEvent> publishSubject = PublishSubject.create();
+        final Subject<LifecycleEvent, LifecycleEvent> publishSubject = getLifecycleEventSubject();
         final Application.ActivityLifecycleCallbacks callbacks = new Application.ActivityLifecycleCallbacks() {
             @Override
             public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
-
+                if (activity == target)
+                    publishSubject.onNext(LifecycleEvent.ON_CREATED);
             }
 
             @Override
             public void onActivityStarted(Activity activity) {
-
+                if (activity == target)
+                    publishSubject.onNext(LifecycleEvent.ON_STARTED);
             }
 
             @Override
             public void onActivityResumed(Activity activity) {
-
+                if (activity == target)
+                    publishSubject.onNext(LifecycleEvent.ON_RESUMED);
             }
 
             @Override
@@ -60,27 +81,28 @@ public class TransformerFactory {
 
             @Override
             public void onActivityDestroyed(Activity activity) {
-                if (activity == target)
+                if (activity == target) {
                     publishSubject.onNext(LifecycleEvent.ON_DESTROYED);
+                }
             }
         };
-
         app.registerActivityLifecycleCallbacks(callbacks);
-        return subscribeUtilEvent(publishSubject, event, new Action0() {
-            @Override
-            public void call() {
-                app.unregisterActivityLifecycleCallbacks(callbacks);
-            }
-        });
+        return publishSubject
+                .doOnUnsubscribe(new Action0() {
+                    @Override
+                    public void call() {
+                        app.unregisterActivityLifecycleCallbacks(callbacks);
+                    }
+                });
     }
 
-    public static <R> Observable.Transformer<R, R> subscribeUtilEventTransformer(final Fragment target, LifecycleEvent event) {
+    public static Observable<LifecycleEvent> createLifecycle(final Fragment target) {
         final FragmentManager manager = target.getFragmentManager();
         if (manager == null) {
             throw new NullPointerException("fragment manager is null!");
         }
 
-        final PublishSubject<LifecycleEvent> publishSubject = PublishSubject.create();
+        final Subject<LifecycleEvent, LifecycleEvent> publishSubject = getLifecycleEventSubject();
         final FragmentManager.FragmentLifecycleCallbacks callbacks = manager.new FragmentLifecycleCallbacks() {
 
             @Override
@@ -148,20 +170,22 @@ public class TransformerFactory {
             }
         };
         manager.registerFragmentLifecycleCallbacks(callbacks, true);
-
-        return subscribeUtilEvent(publishSubject, event, new Action0() {
-            @Override
-            public void call() {
-                manager.unregisterFragmentLifecycleCallbacks(callbacks);
-            }
-        });
+        return publishSubject
+                .doOnUnsubscribe(new Action0() {
+                    @Override
+                    public void call() {
+                        manager.unregisterFragmentLifecycleCallbacks(callbacks);
+                    }
+                });
     }
 
-    private static <R, T> Observable.Transformer<R, R> subscribeUtilEvent(final Observable<T> source, final T event, final Action0 doOnComplete) {
+    private static <R, T> Observable.Transformer<R, R> subscribeUtilEvent(final Observable<T> eventSource, final T event) {
         return new Observable.Transformer<R, R>() {
             @Override
             public Observable<R> call(Observable<R> rObservable) {
-                return rObservable.takeUntil(takeUntilEvent(source, event)).doOnCompleted(doOnComplete);
+                return rObservable.takeUntil(
+                        takeUntilEvent(eventSource, event)
+                );
             }
         };
     }

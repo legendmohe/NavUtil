@@ -2,19 +2,35 @@
 利用 NavUtil，你可以在 Activity 或 Fragment 的生命周期发生变化时，停止订阅你的 Observable。
 
 # Usage
-首先，需要初始化 NavUtil 单例
 
-    public class App extends Application {
-        @Override
-        public void onCreate() {
-            super.onCreate();
-            NavUtil.init(this);
-        }
-    }
-    
-然后，在Activity 或 Fragment 中，为你的 Observable 应用 compose 操作符，如下所示：
+在Activity 中，为你的 Observable 应用 compose 操作符，如下所示：
+
+    // 假设这是你的 Observable
+    Observable.interval(1, TimeUnit.SECONDS) 
+        // 你的 Observable 将在 Activity 的 OnStopped 触发后停止发射
+        .compose(NavUtil.<Long>subscribeUtilEvent(this, LifecycleEvent.ON_STOPPED))
+        .subscribe(new Subscriber<Long>() {
+            @Override
+            public void onCompleted() {
+                Log.d(TAG, "onStart onCompleted() called");
+            }
+
+            @Override
+            public void onError(Throwable e) {
+                Log.d(TAG, "onStart onError() called with: e = [" + e + "]");
+            }
+
+            @Override
+            public void onNext(Long aLong) {
+                Log.d(TAG, "onStart onNext() called with: aLong = [" + aLong + "]");
+            }
+        });
+        
+ 在 Fragment 中的用法如下所示：
  
+    // 假设这是你的 Observable
     Observable.interval(1, TimeUnit.SECONDS)
+        // 你的 Observable 将在 Activity 的 onPaused 触发后停止发射
         .compose(NavUtil.<Long>subscribeUtilEvent(this, LifecycleEvent.ON_PAUSED))
         .subscribe(new Subscriber<Long>() {
             @Override
